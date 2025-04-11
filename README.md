@@ -63,6 +63,7 @@ Despite the increasing use of machine learning in healthcare, many stroke predic
    - ✅ Streamlit dashboard (planned)
    - ✅ Pipeline automation with `sklearn.pipeline` and `MLflow` (planned)
 
+![Analytical Improvements](images/Analytical%20Improvements.png)
 ---
 
 ## 📈 Results Summary
@@ -85,6 +86,7 @@ Despite the increasing use of machine learning in healthcare, many stroke predic
 ## 📊 Visualizations
 
 - 📍 Effort vs Impact Matrix
+![Effort vs Impact Matrix](images/download%20(1).png)
 - 🕸️ Radar Chart: Research Gaps vs Proposed Solutions
 - 📈 SHAP summary plots (planned)
 - 📊 Confusion matrices & ROC curves
