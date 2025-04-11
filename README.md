@@ -11,7 +11,7 @@ Despite the increasing use of machine learning in healthcare, many stroke predic
 - Gender-specific prediction gaps
 - Class imbalance issues
 - Low interpretability of complex ML models
-
+![Research Problem Flowchart](images/Untitled diagram-2025-04-10-234526.png)
 ---
 
 ## 🎯 Objectives
