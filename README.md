@@ -1,6 +1,7 @@
 # 🧠 Stroke Prediction Using Machine Learning
 
 This project aims to predict the likelihood of stroke in patients using demographic and health-related attributes through various machine learning models. It also explores research gaps related to fairness, interpretability, and model performance, especially across gender-specific subgroups.
+
 ![Radar Chart](images/radar%20style.png)
 ---
 
