@@ -47,7 +47,7 @@ def get_spark():
     os.environ.setdefault("PYSPARK_PYTHON", "python3")
     os.environ.setdefault("PYSPARK_DRIVER_PYTHON", "python3")
 
-    # Create Spark session (local mode)
+    # Create Spark session (local mode) + container-safe network settings
     spark = (
         SparkSession.builder
         .appName("StrokeDashboard")
@@ -55,6 +55,8 @@ def get_spark():
         .config("spark.ui.enabled", "false")
         .config("spark.sql.shuffle.partitions", "4")
         .config("spark.driver.memory", "2g")
+        .config("spark.driver.bindAddress", "127.0.0.1")
+        .config("spark.driver.host", "127.0.0.1")
         .getOrCreate()
     )
     return spark
@@ -86,9 +88,9 @@ def load_data(spark: SparkSession):
         if c in df.columns:
             df = df.withColumn(c, col(c).cast(FloatType()))
 
-    # Handle missing bmi
+    # Handle missing bmi (safe even if bmi is all null)
     if "bmi" in df.columns:
-        mean_bmi = df.select("bmi").agg({"bmi": "mean"}).collect()[0][0]
+        mean_bmi = df.selectExpr("avg(bmi) as mean_bmi").collect()[0]["mean_bmi"]
         if mean_bmi is not None:
             df = df.fillna({"bmi": float(mean_bmi)})
 
@@ -103,7 +105,6 @@ def extract_prob_second(x):
     - numpy array
     """
     try:
-        # DenseVector has .values OR supports indexing
         return float(x[1])
     except Exception:
         try:
@@ -137,7 +138,6 @@ df = load_data(spark)
 predictions = model.transform(df)
 
 # Convert ONLY what you need to pandas (avoid huge memory use)
-# Tip: limit to a reasonable number for the dashboard
 N = st.sidebar.slider("Rows to display", min_value=50, max_value=5000, value=500, step=50)
 
 selected = predictions.select(
@@ -159,7 +159,6 @@ st.dataframe(
 )
 
 st.subheader("📈 Stroke Risk Distribution")
-# value_counts(bins=...) is pandas, but it's fine now since pred_df is limited
 hist = pred_df["stroke_risk"].dropna().value_counts(bins=10, sort=False)
 st.bar_chart(hist)
 
