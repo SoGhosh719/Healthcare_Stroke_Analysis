@@ -2,4 +2,4 @@ streamlit==1.53.0
 pyspark==3.5.1
 pandas==2.3.3
 pyarrow==23.0.0
-numpy==2.4.1
+numpy==1.26.4
