@@ -69,12 +69,12 @@ def get_model():
 
 
 @st.cache_data
-def load_data(spark: SparkSession):
+def load_data(_spark: SparkSession):
     # Load data — fallback to CSV if Parquet isn't found
     try:
-        df = spark.read.parquet("data/stroke_test_data.parquet")
+        df = _spark.read.parquet("data/stroke_test_data.parquet")
     except Exception:
-        df = spark.read.csv(
+        df = _spark.read.csv(
             "data/healthcare-dataset-stroke-data.csv",
             header=True,
             inferSchema=True,
@@ -101,9 +101,11 @@ def extract_prob_second(x):
     """
     probability can be:
     - pyspark.ml.linalg.DenseVector / SparseVector
-    - list
+    - list/tuple
     - numpy array
     """
+    if x is None:
+        return None
     try:
         return float(x[1])
     except Exception:
@@ -130,37 +132,55 @@ def risk_level(prob):
 st.set_page_config(page_title="Stroke Prediction Dashboard", layout="wide")
 st.title("🩺 Real-Time Stroke Risk Prediction Dashboard")
 
+# Sidebar controls first (so they appear even if something fails later)
+N = st.sidebar.slider("Rows to display", min_value=50, max_value=5000, value=500, step=50)
+
+# Load Spark + model
 spark = get_spark()
 model = get_model()
+
+# Load data
 df = load_data(spark)
 
 # Apply model
 predictions = model.transform(df)
 
-# Convert ONLY what you need to pandas (avoid huge memory use)
-N = st.sidebar.slider("Rows to display", min_value=50, max_value=5000, value=500, step=50)
+# Select columns safely (avoid crash if "stroke" isn't present)
+wanted_cols = ["age", "avg_glucose_level", "bmi", "prediction", "probability"]
+if "stroke" in predictions.columns:
+    wanted_cols.append("stroke")
 
-selected = predictions.select(
-    "age", "avg_glucose_level", "bmi", "prediction", "probability", "stroke"
-).limit(N)
-
+selected = predictions.select(*wanted_cols).limit(N)
 pred_df = selected.toPandas()
 
 # Extract probability for class 1
 pred_df["stroke_risk"] = pred_df["probability"].apply(extract_prob_second)
 pred_df["Risk Level"] = pred_df["stroke_risk"].apply(risk_level)
 
+# Display table
 st.subheader("📊 Prediction Results (sample)")
+table_cols = [c for c in ["age", "avg_glucose_level", "bmi", "stroke_risk", "Risk Level", "prediction"] if c in pred_df.columns]
+
+# Sort safely (handle None/NaN)
+pred_df_sorted = pred_df.copy()
+pred_df_sorted["stroke_risk_sort"] = pd.to_numeric(pred_df_sorted["stroke_risk"], errors="coerce")
+
 st.dataframe(
-    pred_df[["age", "avg_glucose_level", "bmi", "stroke_risk", "Risk Level", "prediction"]]
-    .sort_values("stroke_risk", ascending=False)
+    pred_df_sorted[table_cols + ["stroke_risk_sort"]]
+    .sort_values("stroke_risk_sort", ascending=False, na_position="last")
+    .drop(columns=["stroke_risk_sort"])
     .head(30),
     use_container_width=True,
 )
 
+# Risk distribution
 st.subheader("📈 Stroke Risk Distribution")
-hist = pred_df["stroke_risk"].dropna().value_counts(bins=10, sort=False)
-st.bar_chart(hist)
+risk_series = pd.to_numeric(pred_df["stroke_risk"], errors="coerce").dropna()
+if len(risk_series) == 0:
+    st.info("No valid probability values found to plot.")
+else:
+    hist = risk_series.value_counts(bins=10, sort=False)
+    st.bar_chart(hist)
 
 st.markdown("---")
 st.markdown("✅ Built with PySpark + Streamlit | 🔍 Model: GBTClassifier")
