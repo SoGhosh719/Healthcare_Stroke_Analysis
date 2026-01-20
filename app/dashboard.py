@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+import setuptools  # provides distutils shim in some environments
 
 import streamlit as st
 import pandas as pd
